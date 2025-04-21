@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Sticks - Lacrosse Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        /* Basic page styling */
+        body {
+            display: flex;
+            flex-direction: column; /* Stack elements vertically */
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #2c3e50; /* Dark blue background */
+            font-family: 'Press Start 2P', cursive; /* Arcade font */
+            color: #ecf0f1; /* Light text color */
+            overflow: hidden; /* Prevent scrollbars */
+        }
+
+        /* Game title styling - Ensured this is present */
+        h1 {
+            font-size: 36px;
+            color: #f1c40f; /* Yellow title */
+            margin-bottom: 15px;
+            text-shadow: 2px 2px #c0392b; /* Red shadow */
+        }
+
+        /* Container for the canvas and overlays */
+        #gameContainer {
+            position: relative; /* Needed for absolute positioning of overlays */
+            border: 5px solid #ecf0f1; /* White border */
+            box-shadow: 0 0 20px rgba(236, 240, 241, 0.5); /* Glow effect */
+        }
+
+        /* Canvas where the game is drawn */
+        canvas {
+            display: block; /* Removes potential extra space below canvas */
+            background-color: #27ae60; /* Field green */
+        }
+
+        /* Scoreboard display */
+        #scoreboard {
+            font-size: 24px;
+            margin-bottom: 15px; /* Space between score and canvas */
+            text-align: center;
+        }
+
+        /* Difficulty controls container */
+        #controls {
+             margin-bottom: 15px; /* Space between controls and score */
+             text-align: center;
+        }
+
+        /* General button styling */
+        button {
+             font-family: 'Press Start 2P', cursive;
+             font-size: 14px;
+             padding: 10px 20px;
+             margin: 0 10px;
+             cursor: pointer;
+             background-color: #e74c3c; /* Red buttons */
+             color: #ecf0f1;
+             border: 2px solid #c0392b; /* Darker red border */
+             border-radius: 5px; /* Slightly rounded corners */
+             transition: background-color 0.2s, transform 0.1s;
+             box-shadow: 0 4px #c0392b; /* Button shadow */
+        }
+
+        /* Button hover effect */
+        button:hover {
+             background-color: #c0392b; /* Darker red on hover */
+        }
+
+        /* Button active (click) effect */
+        button:active {
+             transform: translateY(2px); /* Push button down on click */
+             box-shadow: 0 2px #c0392b;
+        }
+
+        /* Styling for the active difficulty button */
+         button.active {
+              background-color: #27ae60; /* Green for active level */
+              border: 2px solid #2ecc71;
+              box-shadow: 0 4px #27ae60;
+         }
+
+         /* Base overlay style (for messages) */
+         .overlay {
+             position: absolute;
+             top: 0;
+             left: 0;
+             width: 100%;
+             height: 100%;
+             display: none; /* Hidden by default */
+             flex-direction: column;
+             justify-content: center;
+             align-items: center;
+             text-align: center;
+             background-color: rgba(44, 62, 80, 0.85); /* Semi-transparent overlay */
+             color: #f1c40f; /* Yellow text */
+             z-index: 10; /* Ensure overlay is on top */
+         }
+
+         /* Specific styling for the main message overlay */
+         #messageOverlay {
+             font-size: 30px;
+         }
+         #messageOverlay p {
+             margin-bottom: 20px;
+         }
+         #messageOverlay button {
+             font-size: 18px;
+             background-color: #3498db; /* Blue button */
+             border: 2px solid #2980b9;
+             box-shadow: 0 4px #2980b9;
+         }
+         #messageOverlay button:hover {
+             background-color: #2980b9;
+         }
+          #messageOverlay button:active {
+             transform: translateY(2px);
+             box-shadow: 0 2px #2980b9;
+         }
+
+         /* Styling for the brief point announcement message */
+         #pointMessage {
+             background-color: transparent; /* No background */
+             font-size: 36px;
+             color: #ffffff; /* White text */
+             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7); /* Black shadow for visibility */
+             pointer-events: none; /* Allow clicks through this overlay */
+             /* Inherits display: none, position, layout from .overlay */
+         }
+
+         /* Styling for the winner trophy emoji */
+         .trophy {
+             font-size: 60px;
+             margin-bottom: 15px;
+         }
+
+    </style>
+</head>
+<body>
+    <h1>Quick Sticks</h1>
+
+    <div id="controls">
+        <button id="easyBtn">Easy</button>
+        <button id="hardBtn">Hard</button>
+    </div>
+
+    <div id="scoreboard">
+        Player: <span id="playerScore">0</span> | AI: <span id="aiScore">0</span>
+    </div>
+
+    <div id="gameContainer">
+        <canvas id="lacrosseCanvas" width="800" height="500"></canvas>
+
+        <div id="messageOverlay" class="overlay">
+            <p id="winLoseMessage"></p>
+            <div id="trophyDisplay" class="trophy" style="display: none;">🏆</div>
+            <button id="playAgainBtn">Play Again?</button>
+        </div>
+
+        <div id="pointMessage" class="overlay">
+        </div>
+    </div>
+
+    <script>
+        // --- Canvas Setup ---
+        const canvas = document.getElementById('lacrosseCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- Game Elements & Constants ---
+        const WINNING_SCORE = 3;
+        const STICK_HEIGHT = 120;
+        const STICK_WIDTH = 12;
+        const STICK_HEAD_RADIUS = 10; // NEW: Radius for the stick head representation
+        const BALL_RADIUS = 10;
+        const PLAYER_STICK_X = 10;
+        const AI_STICK_X = canvas.width - STICK_WIDTH - 10;
+        const FIELD_LINE_WIDTH = 5;
+        const FIELD_CENTER_X = canvas.width / 2;
+        const FIELD_CENTER_Y = canvas.height / 2;
+        const OBSTACLE_WIDTH = 20;
+        const OBSTACLE_HEIGHT = 80;
+        const OBSTACLE_COLOR = '#e74c3c';
+        const LACROSSE_BALL_COLOR = '#f1c40f';
+        const STICK_COLOR = '#ecf0f1';
+        const STICK_HEAD_COLOR = '#bdc3c7'; // Slightly different color for head
+
+        // --- AI Miss Chance Constants ---
+        const AI_MISS_CHANCE_EASY = 0.02;
+        const AI_MISS_CHANCE_HARD = 0.005;
+        const AI_MISS_SPEED_MULTIPLIER = 0.1;
+
+        // --- Game State Variables ---
+        let playerScore = 0;
+        let aiScore = 0;
+        let gameRunning = false;
+        let difficulty = 'easy';
+        let baseBallSpeedX = 10;
+        let baseBallSpeedY = 10;
+        let baseAiSpeed = 7;
+        let maxBallSpeedEasy = 20;
+        let maxBallSpeedHard = 26;
+        let pointMessageTimeout = null;
+
+        // --- Game Objects ---
+        const playerStick = {
+            x: PLAYER_STICK_X,
+            y: canvas.height / 2 - STICK_HEIGHT / 2,
+            width: STICK_WIDTH,
+            height: STICK_HEIGHT,
+            color: STICK_COLOR
+        };
+        const aiStick = {
+            x: AI_STICK_X,
+            y: canvas.height / 2 - STICK_HEIGHT / 2,
+            width: STICK_WIDTH,
+            height: STICK_HEIGHT,
+            color: STICK_COLOR,
+            speed: baseAiSpeed
+        };
+        const ball = {
+            x: FIELD_CENTER_X,
+            y: FIELD_CENTER_Y,
+            radius: BALL_RADIUS,
+            speedX: baseBallSpeedX,
+            speedY: baseBallSpeedY,
+            color: LACROSSE_BALL_COLOR
+        };
+        const obstacles = [
+             { x: FIELD_CENTER_X - OBSTACLE_WIDTH / 2, y: canvas.height * 0.25 - OBSTACLE_HEIGHT / 2, width: OBSTACLE_WIDTH, height: OBSTACLE_HEIGHT, color: OBSTACLE_COLOR },
+             { x: FIELD_CENTER_X - OBSTACLE_WIDTH / 2, y: canvas.height * 0.75 - OBSTACLE_HEIGHT / 2, width: OBSTACLE_WIDTH, height: OBSTACLE_HEIGHT, color: OBSTACLE_COLOR }
+        ];
+
+        // --- DOM Element References ---
+        const playerScoreDisplay = document.getElementById('playerScore');
+        const aiScoreDisplay = document.getElementById('aiScore');
+        const messageOverlay = document.getElementById('messageOverlay');
+        const winLoseMessage = document.getElementById('winLoseMessage');
+        const trophyDisplay = document.getElementById('trophyDisplay');
+        const playAgainBtn = document.getElementById('playAgainBtn');
+        const easyBtn = document.getElementById('easyBtn');
+        const hardBtn = document.getElementById('hardBtn');
+        const pointMessage = document.getElementById('pointMessage');
+
+        // --- Drawing Functions ---
+        function drawRect(x, y, w, h, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, w, h);
+        }
+        function drawCircle(x, y, r, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2, false);
+            ctx.closePath();
+            ctx.fill();
+        }
+        function drawMidfieldLine() {
+            for (let i = 0; i <= canvas.height; i += 25) {
+                drawRect(FIELD_CENTER_X - FIELD_LINE_WIDTH / 2, i, FIELD_LINE_WIDTH, 15, '#ecf0f1');
+            }
+        }
+        function drawObstacles() {
+            obstacles.forEach(obstacle => {
+                drawRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height, obstacle.color);
+            });
+        }
+
+        // NEW: Function to draw a lacrosse stick (shaft + head)
+        function drawStick(stick, isPlayer) {
+            // Draw the shaft
+            drawRect(stick.x, stick.y, stick.width, stick.height, stick.color);
+
+            // Draw the head (circle)
+            let headX;
+            // Position head slightly offset from the shaft's center top
+            if (isPlayer) { // Player stick on the left
+                headX = stick.x + stick.width / 2; // Center of the shaft horizontally
+            } else { // AI stick on the right
+                headX = stick.x + stick.width / 2; // Center of the shaft horizontally
+            }
+            // Position head vertically at the top of the stick
+            let headY = stick.y; // Align top of head circle with top of stick shaft
+
+            drawCircle(headX, headY, STICK_HEAD_RADIUS, STICK_HEAD_COLOR);
+        }
+
+
+        // Main function to draw all game elements
+        function drawGame() {
+             // Draw background (field)
+             drawRect(0, 0, canvas.width, canvas.height, '#27ae60');
+             // Draw the midfield line
+             drawMidfieldLine();
+             // Draw obstacles
+             drawObstacles();
+             // Draw Player Stick using the new function
+             drawStick(playerStick, true); // Pass true for player
+             // Draw AI Stick using the new function
+             drawStick(aiStick, false);    // Pass false for AI
+             // Draw Ball
+             drawCircle(ball.x, ball.y, ball.radius, ball.color);
+        }
+
+        // --- Movement & Logic ---
+        function showPointMessage(message) {
+             pointMessage.textContent = message;
+             pointMessage.style.display = 'flex';
+             if (pointMessageTimeout) {
+                 clearTimeout(pointMessageTimeout);
+             }
+             pointMessageTimeout = setTimeout(() => {
+                 pointMessage.style.display = 'none';
+                 pointMessageTimeout = null;
+             }, 1200);
+        }
+        function resetBall() {
+             ball.x = FIELD_CENTER_X;
+             ball.y = FIELD_CENTER_Y;
+             const currentBaseSpeed = (difficulty === 'hard' ? baseBallSpeedX * 1.5 : baseBallSpeedX);
+             ball.speedX = (Math.random() > 0.5 ? 1 : -1) * currentBaseSpeed * 0.7;
+             ball.speedY = (Math.random() * 2 - 1) * currentBaseSpeed * 0.7;
+             if (Math.abs(ball.speedX) < currentBaseSpeed * 0.5) {
+                 ball.speedX = (ball.speedX > 0 ? 1 : -1) * currentBaseSpeed * 0.5;
+             }
+        }
+        function moveBall() {
+             ball.x += ball.speedX;
+             ball.y += ball.speedY;
+
+             // Wall collision (Top/Bottom)
+             if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
+                 ball.speedY = -ball.speedY;
+                 if (ball.y + ball.radius > canvas.height) ball.y = canvas.height - ball.radius;
+                 if (ball.y - ball.radius < 0) ball.y = ball.radius;
+             }
+
+             // Obstacle collision
+             obstacles.forEach(obstacle => {
+                 if (detectRectCollision(ball, obstacle)) {
+                     let overlapX = (ball.radius + obstacle.width / 2) - Math.abs(ball.x - (obstacle.x + obstacle.width / 2));
+                     let overlapY = (ball.radius + obstacle.height / 2) - Math.abs(ball.y - (obstacle.y + obstacle.height / 2));
+                     if (overlapX > overlapY) {
+                         ball.speedY = -ball.speedY;
+                         ball.y += ball.speedY > 0 ? overlapY : -overlapY;
+                      } else {
+                         ball.speedX = -ball.speedX;
+                         ball.x += ball.speedX > 0 ? overlapX : -overlapX;
+                      }
+                 }
+             });
+
+             // Stick collision
+             let stick = (ball.x < canvas.width / 2) ? playerStick : aiStick;
+             if (detectCollision(ball, stick)) {
+                 let collidePoint = (ball.y - (stick.y + stick.height / 2)) / (stick.height / 2);
+                 let angleRad = collidePoint * (Math.PI / 4);
+                 let direction = (ball.x < canvas.width / 2) ? 1 : -1;
+                 let currentSpeed = Math.sqrt(ball.speedX**2 + ball.speedY**2);
+                 let maxSpeed = (difficulty === 'hard' ? maxBallSpeedHard : maxBallSpeedEasy);
+                 currentSpeed = Math.min(currentSpeed * 1.07, maxSpeed);
+                 ball.speedX = direction * currentSpeed * Math.cos(angleRad);
+                 ball.speedY = currentSpeed * Math.sin(angleRad);
+                 ball.x += ball.speedX > 0 ? 3 : -3; // Nudge ball away
+             } else {
+                 // Scoring Logic
+                 if (ball.x - ball.radius < 0) {
+                     aiScore++;
+                     showPointMessage("AI Goal!");
+                     resetBall();
+                 } else if (ball.x + ball.radius > canvas.width) {
+                     playerScore++;
+                     showPointMessage("Player Goal!");
+                     resetBall();
+                 }
+             }
+             playerScoreDisplay.textContent = playerScore;
+             aiScoreDisplay.textContent = aiScore;
+        }
+        function detectCollision(b, s) {
+             // Adjusted slightly to account for head - treat collision box as slightly wider/taller at the top
+             let stickTop = s.y - STICK_HEAD_RADIUS; // Consider head radius for top boundary
+             let stickBottom = s.y + s.height;
+             let stickLeft = s.x;
+             let stickRight = s.x + s.width;
+
+             // Basic AABB check first (Axis-Aligned Bounding Box)
+             if (b.x + b.radius < stickLeft || b.x - b.radius > stickRight ||
+                 b.y + b.radius < stickTop || b.y - b.radius > stickBottom) {
+                 return false; // No collision possible
+             }
+
+             // More precise check (circle vs rectangle - simplified for paddle shape)
+             let closestX = Math.max(stickLeft, Math.min(b.x, stickRight));
+             // Use the adjusted top for closestY calculation
+             let closestY = Math.max(stickTop, Math.min(b.y, stickBottom));
+
+             let distanceX = b.x - closestX;
+             let distanceY = b.y - closestY;
+             let distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+
+             return distanceSquared < (b.radius * b.radius);
+          }
+        function detectRectCollision(circle, rect) {
+             let closestX = Math.max(rect.x, Math.min(circle.x, rect.x + rect.width));
+             let closestY = Math.max(rect.y, Math.min(circle.y, rect.y + rect.height));
+             let distanceX = circle.x - closestX;
+             let distanceY = circle.y - closestY;
+             let distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+             return distanceSquared < (circle.radius * circle.radius);
+          }
+        function moveAiStick() {
+             let aiStickCenter = aiStick.y + aiStick.height / 2;
+             let targetY = ball.y + (ball.speedY * 0.12);
+             let trackingOffset = (difficulty === 'easy' ? 50 : 30);
+             let currentFrameAiSpeed = aiStick.speed;
+             let missChance = (difficulty === 'easy') ? AI_MISS_CHANCE_EASY : AI_MISS_CHANCE_HARD;
+             if (Math.random() < missChance) {
+                 currentFrameAiSpeed *= AI_MISS_SPEED_MULTIPLIER;
+             }
+             if (aiStickCenter < targetY - trackingOffset) {
+                 aiStick.y += currentFrameAiSpeed;
+             } else if (aiStickCenter > targetY + trackingOffset) {
+                 aiStick.y -= currentFrameAiSpeed;
+             }
+             if (aiStick.y < 0) aiStick.y = 0;
+             if (aiStick.y + aiStick.height > canvas.height) aiStick.y = canvas.height - aiStick.height;
+        }
+        function movePlayerStick(event) {
+             let rect = canvas.getBoundingClientRect();
+             playerStick.y = event.clientY - rect.top - playerStick.height / 2;
+             if (playerStick.y < 0) playerStick.y = 0;
+             if (playerStick.y + playerStick.height > canvas.height) playerStick.y = canvas.height - playerStick.height;
+        }
+
+        // --- Game Loop ---
+        function update() {
+             if (!gameRunning) return;
+             moveBall();
+             moveAiStick();
+             drawGame();
+             if (playerScore >= WINNING_SCORE || aiScore >= WINNING_SCORE) {
+                 endGame();
+             } else {
+                 requestAnimationFrame(update);
+             }
+        }
+
+        // --- Game Management Functions ---
+        function setDifficulty(level) {
+             difficulty = level;
+             if (level === 'easy') {
+                 aiStick.speed = baseAiSpeed;
+                 easyBtn.classList.add('active');
+                 hardBtn.classList.remove('active');
+             } else {
+                 aiStick.speed = baseAiSpeed * 1.6;
+                 easyBtn.classList.remove('active');
+                 hardBtn.classList.add('active');
+             }
+              resetBall();
+             if (!gameRunning) {
+                  startGame();
+             }
+        }
+        function startGame() {
+             playerScore = 0; aiScore = 0;
+             playerScoreDisplay.textContent = playerScore; aiScoreDisplay.textContent = aiScore;
+             messageOverlay.style.display = 'none';
+             pointMessage.style.display = 'none';
+             if (pointMessageTimeout) { clearTimeout(pointMessageTimeout); pointMessageTimeout = null; }
+             trophyDisplay.style.display = 'none';
+             gameRunning = true;
+             resetBall();
+             requestAnimationFrame(update);
+        }
+        function endGame() {
+             gameRunning = false;
+             messageOverlay.style.display = 'flex';
+             playAgainBtn.style.display = 'block';
+             if (pointMessageTimeout) { clearTimeout(pointMessageTimeout); pointMessageTimeout = null; }
+             pointMessage.style.display = 'none';
+             if (playerScore >= WINNING_SCORE) {
+                 winLoseMessage.textContent = "You Win!";
+                 trophyDisplay.style.display = 'block';
+             } else {
+                 winLoseMessage.textContent = "AI Wins!";
+                 trophyDisplay.style.display = 'none';
+             }
+        }
+
+        // --- Event Listeners Setup ---
+        canvas.addEventListener('mousemove', movePlayerStick);
+        easyBtn.addEventListener('click', () => setDifficulty('easy'));
+        hardBtn.addEventListener('click', () => setDifficulty('hard'));
+        playAgainBtn.addEventListener('click', startGame);
+
+        // --- Initial Game State Setup ---
+        drawGame(); // Initial draw
+        winLoseMessage.textContent = "Select Difficulty";
+        trophyDisplay.style.display = 'none';
+        playAgainBtn.style.display = 'none';
+        pointMessage.style.display = 'none';
+        messageOverlay.style.display = 'flex'; // Show start message
+
+    </script>
+
+</body>
+</html>
+```
+

@@ -1,0 +1,101 @@
+/* Base Styles */
+.body {
+    font-family: Georgia, serif;
+    margin: 0;
+    background-color: #f0f8ff;
+    color: #00264d;
+    font-size: 1.2rem;
+  }
+  
+  /* Navigation bar */
+  .nav {
+    background-color: #003366;
+    padding: 1em;
+    text-align: center;
+  }
+  
+  .nav a {
+    color: white;
+    margin: 0 20px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+  }
+  
+  .nav a:hover {
+    text-decoration: underline;
+  }
+  
+  /* Hero section */
+  .hero {
+    text-align: center;
+    padding: 3em 1em;
+    background-color: #cce6ff;
+    border-bottom: 5px solid #003366;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .content {
+    padding: 2em;
+    margin: 2em auto;
+    max-width: 900px;
+    background-color: #ffffff;
+    border-left: 6px solid #003366;
+    border-radius: 10px;
+    box-shadow: 0 6px 10px rgba(0,0,0,0.1);
+    text-align: center;
+  }
+  .content ol {
+    display: inline-block;      /* Makes the list a centered block */
+    text-align: left;           /* Ensures numbers and items align properly */
+    padding-left: 1.2em;        /* Adds spacing for numbers */
+    margin: auto;               /* Centers the block */
+  }
+  
+  
+  .hero h1{
+    font-size: 3rem;
+    color: #00264d;
+    margin-bottom: 0.5}
+
+    .content ol, .content ul {
+      text-align: left;
+      display: inline-block;
+    }
+
+    .content ol,
+.content ul {
+  text-align: left;
+  display: inline-block;
+}
+
+
+.getinline{
+    display: flex;
+    justify-content:center;
+    flex-wrap: wrap;
+}
+
+.getinline figure {
+    margin: 10;
+    text-align: center;
+    width: 250px;
+  }
+
+
+.getinline img{
+    width:100%;
+    height: 400px;
+    object-fit:fill;
+}
+
+.getinline figcaption{
+    font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+}
+
+
+.foot{
+    text-align: center;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+}
